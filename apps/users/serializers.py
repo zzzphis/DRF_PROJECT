@@ -5,21 +5,14 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from config.dbs.redisconfig import KEY_TEMPLATE
-from users.models import UserDetail
 
 
 class UserSerializer(serializers.ModelSerializer):
     uuid = serializers.CharField(write_only=True)
     verify = serializers.CharField(write_only=True)
-    # 以下字段只能看不能修改
-    sex = serializers.IntegerField(read_only=True, source='userDetail.sex')
-    birthday = serializers.DateTimeField(read_only=True, source='userDetail.birthday')
-    age = serializers.IntegerField(read_only=True, source='userDetail.age')
-    phone = serializers.CharField(read_only=True, source='userDetail.phone')
 
     class Meta:
         model = User
-        # fields = "__all__"
         exclude = ['first_name', 'last_name', 'groups', 'user_permissions', 'last_login', 'date_joined']
         extra_kwargs = {
             'is_superuser': {'read_only': True},
@@ -29,17 +22,10 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        """
-        验证数据
-        :param attrs: 数据
-        :return: 返回验证后的数据
-        """
-        # 验证验证码是否正确
         uuid = attrs.get('uuid')
         verify = attrs.get('verify')
         cache = get_redis_connection(alias='verify_codes')  # 使用redis
         redis_verify = cache.get(KEY_TEMPLATE % ('register', uuid))
-        # 删除数据
         cache.delete(KEY_TEMPLATE % ('register', uuid))
         if not redis_verify:
             raise serializers.ValidationError('验证码已过期')
@@ -49,28 +35,23 @@ class UserSerializer(serializers.ModelSerializer):
         # 验证码验证逻辑
 
 
+# 登录
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    自定义TokenObtainPairSerializer
-    """
     uuid = serializers.CharField(write_only=True)
     verify = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         """
         验证数据
-        :param attrs: 数据
-        :return: 返回验证后的数据
+        :param attrs:
+        :return:
         """
-        # 验证验证码是否正确
         uuid = attrs.get('uuid')
         verify = attrs.get('verify')
         username = attrs.get('username')
         password = attrs.get('password')
-
-        cache = get_redis_connection(alias='verify_codes')  # 使用redis
+        cache = get_redis_connection(alias='verify_codes')
         redis_verify = cache.get(KEY_TEMPLATE % ('login', uuid))
-        # 删除数据
         cache.delete(KEY_TEMPLATE % ('login', uuid))
         if not redis_verify:
             raise serializers.ValidationError('验证码已过期')
@@ -81,28 +62,5 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         user = authenticate(username=username, password=password)
         if not user:
             raise serializers.ValidationError('用户名或密码错误')
-
         refresh = self.get_token(user)
-
         return {'user': user.username, 'token': str(refresh.access_token)}
-
-
-class UserDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserDetail
-        exclude = ['is_delete']
-
-
-class UpdatePasswordSerializer(serializers.Serializer):
-    oldPassword = serializers.CharField(max_length=60, label='原密码', help_text='原密码')
-    newPassword = serializers.CharField(max_length=60, label='新密码', help_text='新密码')
-    re_newPassword = serializers.CharField(max_length=60, label='确认密码', help_text='确认密码')
-
-    def validate(self, attrs):
-        if attrs['newPassword'] != attrs['re_newPassword']:
-            raise serializers.ValidationError('两次输入的密码不一致')
-        return attrs
-
-    # class Meta:
-    #     model = User
-    #     fields='__all__'
