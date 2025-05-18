@@ -9,9 +9,12 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
-import sys
 import os
+import sys
+from datetime import timedelta
 from pathlib import Path
+
+from config.dbs.redisconfig import LOCATION
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,7 +41,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'app1'
+    'rest_framework_simplejwt',
+    'app1',
+    'users'
 ]
 
 MIDDLEWARE = [
@@ -168,4 +173,56 @@ LOGGING = {
             'level': 'INFO',  # 日志器接收的最低日志级别
         },
     }
+}
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Token认证
+        'rest_framework.authentication.SessionAuthentication',  # session认证
+        'rest_framework.authentication.BasicAuthentication'  # 基础认证
+    ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',  # 匿名用户
+        'rest_framework.throttling.UserRateThrottle'  # 认证用户
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',  # 未登录的用户每分钟最多访问5次
+        'user': '1000/day'  # 已登录的用户每天最多访问1000次
+    }
+}
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': LOCATION % 0,  # 'redis://127.0.0.1:6379/0'
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 100  # 最大连接数量
+            }
+        }
+    },
+    'verify_codes': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': LOCATION % 1,  # 验证码答案放在1号库
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 100,
+                'decode_responses': True  # 将字节数据转换为字符数据
+            }
+        }
+    },
+    'area': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': LOCATION % 2,  # 缓存信息放到2号库
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {
+                'max_connections': 100,
+                'decode_responses': False
+            }
+        }
+    }
+}
+SIMPLE_TIME = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=5)  # 访问token的过期时间
 }
