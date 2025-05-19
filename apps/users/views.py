@@ -7,11 +7,13 @@ from django_redis import get_redis_connection
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.viewsets import GenericViewSet
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from config.dbs.redisconfig import KEY_TEMPLATE, EXPIRE_TIME
-from users.serializers import UserSerializer, MyTokenObtainPairSerializer
+from users.serializers import UserSerializer, MyTokenObtainPairSerializer, UserDetailSerializer, \
+    UpdatePasswordSerializer
 from utils.verifyutil import ImageVerify
 
 
@@ -50,6 +52,16 @@ class UserViewSet(GenericViewSet):
             permission_classes = []
         return [permission() for permission in permission_classes]
 
+    # 因为需要对个人信息进行上传，
+    # 需要判断是不是info路由更换序列化器
+    def get_serializer_class(self):
+        if self.action in ['info']:
+            return UserDetailSerializer
+        elif self.action in ['password']:
+            return UpdatePasswordSerializer
+        else:
+            return self.serializer_class
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -67,6 +79,38 @@ class UserViewSet(GenericViewSet):
     def now(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
+
+    @action(methods=['put'], detail=False)
+    def info(self, request):
+        user = request.user
+
+        request.POST._mutable = True
+        request.data['user'] = user.id
+
+        if hasattr(user, 'userDetail'):
+            user_detail_serializer = self.get_serializer(user.userDetail, data=request.data)
+        else:
+            user_detail_serializer = self.get_serializer(data=request.data)
+        user_detail_serializer.is_valid(raise_exception=True)
+        user_detail_serializer.save()
+        return Response(user_detail_serializer.data)
+
+    @action(methods=['put'], detail=False)
+    def password(self, request):
+        user = request.user
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        password = request.data['oldPassword']
+        new_Password = request.data['newPassword']
+        if user.check_password(password):
+            user.set_password(new_Password)
+            user.save()
+            return Response({'msg': '修改成功'})
+        else:
+            return Response(status=HTTP_400_BAD_REQUEST)
+
+
+
 
 
 class MyTokenObtainPairView(TokenObtainPairView):

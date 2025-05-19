@@ -8,7 +8,7 @@ from utils.modelMaxin import ModelSetMixin
 class UserDetail(ModelSetMixin):
     sex_choice = {
         (1, '男'),
-        (2, '女')
+        (0, '女')
     }
     avator = models.TextField(max_length=30, verbose_name='头像', null=True)
     sex = models.IntegerField(verbose_name='性别', null=True, blank=True,

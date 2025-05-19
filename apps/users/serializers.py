@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from config.dbs.redisconfig import KEY_TEMPLATE
+from users.models import UserDetail
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -64,3 +65,20 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError('用户名或密码错误')
         refresh = self.get_token(user)
         return {'user': user.username, 'token': str(refresh.access_token)}
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserDetail
+        exclude = ['is_delete']
+
+
+class UpdatePasswordSerializer(serializers.Serializer):
+    oldPassword = serializers.CharField(max_length=60, label='原密码', help_text='原密码')
+    newPassword = serializers.CharField(max_length=60, label='新密码', help_text='新密码')
+    re_newPassword = serializers.CharField(max_length=60, label='确认密码', help_text='确认密码')
+
+    def validate(self, attrs):
+        if attrs['newPassword'] != attrs['re_newPassword']:
+            raise serializers.ValidationError('两次输入的密码不一致')
+        return attrs
