@@ -74,11 +74,19 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 
 class UpdatePasswordSerializer(serializers.Serializer):
-    oldPassword = serializers.CharField(max_length=60, label='原密码', help_text='原密码')
-    newPassword = serializers.CharField(max_length=60, label='新密码', help_text='新密码')
-    re_newPassword = serializers.CharField(max_length=60, label='确认密码', help_text='确认密码')
+    password = serializers.CharField(max_length=60, label='原密码', help_text='原密码',required=False)
+    new_password = serializers.CharField(max_length=60, label='新密码', help_text='新密码',required=False)
+    re_new_password = serializers.CharField(max_length=60, label='确认密码', help_text='确认密码',required=False)
 
     def validate(self, attrs):
-        if attrs['newPassword'] != attrs['re_newPassword']:
+
+        if attrs['new_password'] != attrs['re_new_password']:
             raise serializers.ValidationError('两次输入的密码不一致')
+        if attrs['password'] == attrs['re_new_password']:
+            raise serializers.ValidationError('新密码不能与原密码相同')
+
+        # 获取请求对象self.context['request']
+        user = self.context['request'].user
+        if not user.check_password(attrs['password']):
+            raise serializers.ValidationError('原密码错误')
         return attrs

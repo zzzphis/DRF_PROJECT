@@ -80,10 +80,10 @@ WSGI_APPLICATION = 'drf_study.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'sqlite3': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    },
+    # 'sqlite3': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'db.sqlite3',
+    # },
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'OPTIONS': {
@@ -223,6 +223,6 @@ CACHES = {
         }
     }
 }
-SIMPLE_TIME = {
+SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=5)  # 访问token的过期时间
 }
